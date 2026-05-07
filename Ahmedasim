@@ -1,0 +1,262 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import os
+import random
+
+print("Libraries loaded successfully!")
+print("TensorFlow version:", tf.__version__)
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("dansbecker/hot-dog-not-hot-dog")
+
+print("Path to dataset files:", path)
+train_path = os.path.join(path, "train")
+test_path = os.path.join(path, "test")
+
+# Now the counting code will work!
+hot_dog_count = len(os.listdir(os.path.join(train_path, "hot_dog")))
+not_hot_dog_count = len(os.listdir(os.path.join(train_path, "not_hot_dog")))
+
+print(f"Hot dog images: {hot_dog_count}")
+print(f"Not hot dog images: {not_hot_dog_count}")
+
+# YOUR CODE HERE: Print the number of test images
+test_hot_dog_count = len(os.listdir(os.path.join(test_path, "hot_dog")))
+test_not_hot_dog_count = len(os.listdir(os.path.join(test_path, "not_hot_dog")))
+
+print(f"Test hot dog images: {test_hot_dog_count}")
+print(f"Test not hot dog images: {test_not_hot_dog_count}"
+# Display 6 random images
+plt.figure(figsize=(12,6))
+
+for i in range(6):
+    # Pick random class
+    class_name = random.choice(["hot_dog", "not_hot_dog"])
+    class_path = os.path.join(train_path, class_name)
+    img_name = random.choice(os.listdir(class_path))
+    img_path = os.path.join(class_path, img_name)
+
+    # Load and show image
+    img = plt.imread(img_path)
+    plt.subplot(2, 3, i+1)
+    plt.imshow(img)
+    plt.title(class_name)
+    plt.axis('off')
+
+plt.tight_layout()
+plt.show()
+
+# YOUR CODE HERE: Print the shape of one image
+print(f"Typical image shape (H, W, Channels): {img.shape}")
+# Set image size (64x64 is faster for GIKI's CEP) [cite: 103, 104]
+IMG_HEIGHT = 64
+IMG_WIDTH = 64
+BATCH_SIZE = 32
+
+# Create generators with automatic labeling [cite: 107]
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    validation_split=0.2
+)
+
+train_generator = train_datagen.flow_from_directory(
+    train_path,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE,
+    class_mode='binary',
+    subset='training'
+)
+
+validation_generator = train_datagen.flow_from_directory(
+    train_path,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE,
+    class_mode='binary',
+    subset='validation'
+)
+
+# YOUR CODE HERE: Print the class labels [cite: 127]
+print("Class Indices:", train_generator.class_indices)
+# Build a simple ANN
+ann_model = keras.Sequential([
+    # Flatten the 2D image into 1D
+    layers.Flatten(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+    # Dense layers
+    layers.Dense(128, activation='relu'),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(1, activation='sigmoid') # Output: probability of "hot dog"
+])
+
+# Compile the model
+ann_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Show model summary
+ann_model.summary()
+
+# Train for 10 epochs
+history_ann = ann_model.fit(train_generator, validation_data=validation_generator, epochs=10)
+
+# Plot training vs validation accuracy
+plt.plot(history_ann.history['accuracy'], label='Training Accuracy')
+plt.plot(history_ann.history['val_accuracy'], label='Validation Accuracy')
+plt.title('ANN Training vs Validation Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+# Build a simple ANN
+ann_model = keras.Sequential([
+    # Flatten the 2D image into 1D
+    layers.Flatten(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+    # Dense layers
+    layers.Dense(128, activation='relu'),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(1, activation='sigmoid') # Output: probability of "hot dog"
+])
+
+# Compile the model
+ann_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Show model summary
+ann_model.summary()
+
+# Train for 10 epochs
+history_ann = ann_model.fit(train_generator, validation_data=validation_generator, epochs=10)
+
+# Plot training vs validation accuracy
+plt.plot(history_ann.history['accuracy'], label='Training Accuracy')
+plt.plot(history_ann.history['val_accuracy'], label='Validation Accuracy')
+plt.title('ANN Training vs Validation Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+# Build the CNN model
+cnn_model = keras.Sequential([
+    # First Conv layer
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+    layers.MaxPooling2D((2, 2)),
+
+    # Second Conv layer
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    # Third Conv layer (Your Turn addition)
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    # Flatten and dense layers
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(1, activation='sigmoid')
+])
+
+# Compile the CNN
+cnn_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Train the CNN (15 epochs)
+history_cnn = cnn_model.fit(train_generator, validation_data=validation_generator, epochs=15)
+
+# Plot the comparison between ANN and CNN
+plt.plot(history_ann.history['val_accuracy'], label='ANN Validation', marker='o')
+plt.plot(history_cnn.history['val_accuracy'], label='CNN Validation', marker='s')
+plt.xlabel('Epoch')
+plt.ylabel('Validation Accuracy')
+plt.legend()
+plt.title('ANN vs CNN Validation Accuracy')
+plt.grid(True)
+plt.show()
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# 1. Setup Data Augmentation
+augmented_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20, # [cite: 256]
+    width_shift_range=0.1, # [cite: 257]
+    height_shift_range=0.1, # [cite: 258]
+    horizontal_flip=True, # [cite: 259]
+    validation_split=0.2 # [cite: 261]
+)
+
+train_augmented = augmented_datagen.flow_from_directory(
+    train_path,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    batch_size=BATCH_SIZE,
+    class_mode='binary',
+    subset='training' # [cite: 268]
+)
+
+# 2. Build the Final Model with Dropout
+final_model = keras.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Dropout(0.25), # First Dropout [cite: 225, 276]
+
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Dropout(0.25), # Second Dropout [cite: 225, 279]
+
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+    layers.Dropout(0.5), # Third Dropout before output [cite: 225, 284]
+    layers.Dense(1, activation='sigmoid')
+])
+
+# 3. Compile and Train
+final_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+history_final = final_model.fit(train_augmented, validation_data=validation_generator, epochs=15)
+
+# 4. Plot Before/After Comparison
+plt.plot(history_cnn.history['val_accuracy'], label='CNN (Overfit)', marker='o')
+plt.plot(history_final.history['val_accuracy'], label='CNN + Dropout + Augment', marker='s')
+plt.xlabel('Epoch')
+plt.ylabel('Validation Accuracy')
+plt.legend()
+plt.title('Improving Generalization')
+plt.grid(True)S
+plt.show()
+from tensorflow.keras.preprocessing import image
+import numpy as np
+import matplotlib.pyplot as plt
+
+def predict_local_image(image_path):
+    # 1. Load the image from your Colab files
+    img = image.load_img(image_path, target_size=(IMG_HEIGHT, IMG_WIDTH))
+
+    # 2. Process and Predict
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
+    prediction = final_model.predict(img_array)[0][0]
+
+    # 3. Show Result
+    if prediction > 0.5:
+        print(f"🌭 HOT DOG! (confidence: {prediction:.2f})")
+    else:
+        print(f"❌ NOT A HOT DOG! (confidence: {1-prediction:.2f})")
+
+    plt.imshow(img)
+    plt.axis('off')
+    plt.show()
+
+# TEST: Use the path of the file you just uploaded
+# Example: predict_local_image("/content/my_burger.jpg")
+predict_local_image("/content/hotdog.jpg")
+!pip install ultralytics -q
+from ultralytics import YOLO
+
+# Load a tiny pre-trained model
+yolo_model = YOLO("yolov8n.pt")
+
+# Run detection on your local hot dog image
+results = yolo_model("/content/hotdog.jpg")
+
+# Show results (it should draw a box)
+results[0].show()
